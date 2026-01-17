@@ -1,0 +1,8 @@
+ipykernel
+torch 
+torchvision 
+torchaudio --index-url https://download.pytorch.org/whl/cu118 --no-cache-dir
+tqdm
+instaloader
+onnxruntime-gpu
+insightface
