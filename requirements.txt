@@ -6,3 +6,5 @@ tqdm
 instaloader
 onnxruntime-gpu
 insightface
+qwen-vl-utils
+pandas
