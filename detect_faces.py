@@ -3,11 +3,11 @@ import os
 from insightface.utils import face_align
 from insightface.app import FaceAnalysis
 
-providers = ['CUDAExecutionProvider', 'CPUExecutionProvider']
-face_analyzer = FaceAnalysis(name='antelopev2', providers=providers)
-face_analyzer.prepare(ctx_id=0, det_size=(640, 640))
-
-def detect_faces_from_image_path(image_path, face_analyzer):
+def detect_faces_from_image_path(image_path):
+    providers = ['CUDAExecutionProvider', 'CPUExecutionProvider']
+    face_analyzer = FaceAnalysis(name='antelopev2', providers=providers)
+    face_analyzer.prepare(ctx_id=0, det_size=(640, 640))
+    
     if not os.path.exists(image_path):
         raise FileNotFoundError(f"Image not found: {image_path}")
 
