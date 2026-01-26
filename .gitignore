@@ -3,3 +3,4 @@ dataset/
 Data/
 downloads/
 images/
+*__pycache__
