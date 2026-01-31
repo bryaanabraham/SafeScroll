@@ -23,13 +23,12 @@ class LLMClient:
         if not self.api_key:
             raise ValueError("GEMINI_API_KEY not found in environment variables")
         self.client = genai.Client(api_key=self.api_key)
-        self.vision_model = "gemini-2.0-flash"
-        self.text_model = "gemini-2.0-flash"
+        self.vision_model = "gemini-2.5-flash-lite-preview-09-2025"
+        self.text_model = "gemini-2.5-flash-lite-preview-09-2025"
         
-        # Free tier optimization settings - AGGRESSIVE delays for free tier
-        self.request_delay = 3.0  # 3 seconds between requests (increased from 1.0)
-        self.max_retries = 5      # 5 retry attempts (increased from 3)
-        self.retry_delay = 5.0    # 5 second initial retry delay (increased from 2.0)
+        self.request_delay = 3.0
+        self.max_retries = 5  
+        self.retry_delay = 5.0
     
     def _call_with_retry(self, func, *args, **kwargs):
         """
@@ -37,7 +36,6 @@ class LLMClient:
         """
         for attempt in range(self.max_retries):
             try:
-                # Add delay before each request (except first)
                 if attempt > 0:
                     delay = self.retry_delay * (2 ** (attempt - 1))  # Exponential backoff
                     time.sleep(delay)
@@ -99,24 +97,24 @@ class LLMClient:
         except Exception as e:
             return f"Unable to determine time: {str(e)}"
     
-    def summarize_image_content(self, image_paths: List[str]) -> str:
+    def summarize_single_image(self, image_path: str) -> str:
         """
-        Generate detailed image summary
+        Generate detailed analysis for a single image
         
-        Improved prompt for comprehensive analysis
+        Analyzes one image at a time for individual image summaries
         """
         try:
-            imgs = [Image.open(img) for img in image_paths]
+            img = Image.open(image_path)
             
             contents = [
-                "Provide a detailed, structured summary of the image(s) covering:\n"
+                "Provide a detailed analysis of this image covering:\n"
                 "1. Main subjects/people (appearance, actions, expressions)\n"
                 "2. Setting/location (indoor/outdoor, environmental details)\n"
                 "3. Objects and items present\n"
                 "4. Activities or events occurring\n"
                 "5. Mood, atmosphere, and overall context\n\n"
-                "Be specific and observant. Use clear, concise language."
-            ] + imgs
+                "Be specific and observant. Use clear, concise language. Keep response under 150 words."
+            ] + [img]
             
             def _api_call():
                 return self.client.models.generate_content(
@@ -124,14 +122,14 @@ class LLMClient:
                     contents=contents,
                     config=types.GenerateContentConfig(
                         temperature=0.5,
-                        max_output_tokens=400  # Reduced for free tier
+                        max_output_tokens=300  # Reduced for single image
                     )
                 )
             
             response = self._call_with_retry(_api_call)
             return response.text.strip()
         except Exception as e:
-            return f"Unable to generate summary: {str(e)}"
+            return f"Unable to analyze image: {str(e)}"
     
     def extract_text_from_image(self, image_paths: List[str]) -> str:
         """
@@ -258,6 +256,69 @@ class LLMClient:
                 "confidence": "Unknown",
                 "error": str(e)
             }
+    
+    def analyze_caption(self, caption: str) -> str:
+        """
+        Analyze the post caption
+        """
+        if not caption or caption.strip() == "":
+            return "No caption provided."
+        
+        try:
+            contents = f"Analyze this Instagram caption and provide insights about its tone, message, and purpose (max 100 words):\n\n{caption}"
+            
+            def _api_call():
+                return self.client.models.generate_content(
+                    model=self.text_model,
+                    contents=contents,
+                    config=types.GenerateContentConfig(
+                        temperature=0.6,
+                        max_output_tokens=200
+                    )
+                )
+            
+            response = self._call_with_retry(_api_call)
+            return response.text.strip()
+        except Exception as e:
+            return f"Unable to analyze caption: {str(e)}"
+    
+    def generate_structured_summary(
+        self,
+        image_analyses: List[Dict[str, str]],
+        caption_analysis: str,
+        face_data: str = ""
+    ) -> str:
+        """
+        Generate structured summary in the format:
+        Image 1: [analysis]
+        Image 2: [analysis]
+        Caption: [caption analysis]
+        
+        Args:
+            image_analyses: List of dicts with 'image_path' and 'analysis'
+            caption_analysis: Analysis of the caption
+            face_data: Optional face detection data
+        """
+        try:
+            # Build the structured output
+            output_lines = []
+            
+            # Add image analyses
+            for idx, img_data in enumerate(image_analyses, 1):
+                analysis = img_data.get('analysis', 'No analysis available')
+                output_lines.append(f"Image {idx}: {analysis}")
+            
+            # Add caption analysis
+            output_lines.append(f"\nCaption: {caption_analysis}")
+            
+            # Add face data if available
+            if face_data and face_data.strip():
+                output_lines.append(f"\n--- Face Detection ---\n{face_data.strip()}")
+            
+            return "\n\n".join(output_lines)
+            
+        except Exception as e:
+            return f"Error generating structured summary: {str(e)}"
     
     def generate_comprehensive_summary(
         self,

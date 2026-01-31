@@ -98,38 +98,40 @@ def analyze_posts(
                     face_data_str += f"{img_name}: No faces detected\n"
             
             # === LLM Analysis ===
-            # Use downscaled images for time/summary (faster)
-            time_content = llm_client.extract_time_of_day(llm_optimized)
-            summary_content = llm_client.summarize_image_content(llm_optimized)
+            # Analyze each image individually
+            image_analyses = []
+            for img_idx, img_path in enumerate(valid_images, 1):
+                # Use downscaled version for analysis
+                llm_img = llm_optimized[img_idx - 1] if img_idx <= len(llm_optimized) else img_path
+                
+                # Analyze this single image
+                analysis = llm_client.summarize_single_image(llm_img)
+                
+                image_analyses.append({
+                    'image_path': img_path,
+                    'image_number': img_idx,
+                    'analysis': analysis
+                })
             
-            # Use higher resolution for OCR (better accuracy)
-            text_content = llm_client.extract_text_from_image(ocr_optimized)
+            # Analyze caption separately
+            caption_text = post.get("caption", "")
+            caption_analysis = llm_client.analyze_caption(caption_text)
             
-            # Extract geolocation from images (optional - can be disabled in config)
-            if config.ENABLE_GEOLOCATION:
-                geolocation_data = llm_client.extract_geolocation(llm_optimized)
-            else:
-                geolocation_data = None
-            
-            # Generate comprehensive summary
-            comprehensive_summary = llm_client.generate_comprehensive_summary(
-                time_content=time_content,
-                summary_content=summary_content,
-                text_content=text_content,
-                caption_content=post.get("caption", ""),
-                face_data=face_data_str,
-                geolocation_data=geolocation_data
+            # Generate structured summary
+            structured_summary = llm_client.generate_structured_summary(
+                image_analyses=image_analyses,
+                caption_analysis=caption_analysis,
+                face_data=face_data_str
             )
             
             all_summaries.append({
                 "post_index": post_idx,
-                "summary": comprehensive_summary,
+                "summary": structured_summary,
                 "metadata": {
                     "num_images": len(valid_images),
                     "num_faces": sum(len(faces) for faces in face_results.values()),
-                    "time_detected": time_content,
                     "has_caption": bool(post.get("caption")),
-                    "geolocation": geolocation_data
+                    "image_analyses": image_analyses
                 }
             })
         

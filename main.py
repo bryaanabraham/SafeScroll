@@ -28,7 +28,7 @@ def format_results(result: dict) -> str:
         output.append(f"📝 POST {summary_data['post_index']}")
         output.append("-" * 70)
         metadata = summary_data['metadata']
-        output.append(f"Images: {metadata['num_images']} | Faces: {metadata['num_faces']} | Time: {metadata['time_detected']}")
+        output.append(f"Images: {metadata['num_images']} | Faces: {metadata['num_faces']}")
         output.append("")
         output.append(summary_data['summary'])
         output.append("")
