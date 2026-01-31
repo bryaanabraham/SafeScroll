@@ -6,6 +6,7 @@ tqdm
 instaloader
 onnxruntime-gpu
 insightface
-qwen-vl-utils
 pandas
-ollama
+google-genai
+python-dotenv
+Pillow

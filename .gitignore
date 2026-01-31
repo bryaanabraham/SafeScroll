@@ -4,3 +4,5 @@ Data/
 downloads/
 images/
 *__pycache__/
+.gitignore
+.env
